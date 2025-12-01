@@ -1,6 +1,7 @@
 "use client";
 
-import { useQuery, gql } from "@apollo/client";
+import { gql } from "@apollo/client";
+import { useQuery } from "@apollo/client/react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { DollarSign, TrendingUp, CheckCircle, XCircle, Clock } from "lucide-react";
@@ -71,7 +72,7 @@ export default function PaymentsPage() {
   if (loading) return <div className="text-center">Chargement...</div>;
   if (error) return <div className="text-center text-destructive">Erreur: {error.message}</div>;
 
-  const payments = data?.payments || [];
+  const payments = (data as any)?.payments || [];
   const totalRevenue = payments
     .filter((p: any) => p.status === "success")
     .reduce((sum: number, p: any) => sum + p.amount, 0);

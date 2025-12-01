@@ -45,6 +45,9 @@ CORS_ALLOW_HEADERS = [
 # GraphQL Configuration
 GRAPHENE = {
     'SCHEMA': 'medicare.schema.schema',
+    'MIDDLEWARE': [
+        'graphql_jwt.middleware.JSONWebTokenMiddleware',
+    ],
 }
 
 # JWT Configuration

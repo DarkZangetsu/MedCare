@@ -1,6 +1,7 @@
 "use client";
 
-import { useQuery, gql } from "@apollo/client";
+import { gql } from "@apollo/client";
+import { useQuery } from "@apollo/client/react";
 import { useAuthStore } from "@/stores/auth-store";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,9 +9,6 @@ import { MessageSquare, Users, DollarSign, TrendingUp } from "lucide-react";
 
 const GET_DOCTOR_STATS = gql`
   query GetDoctorStats {
-    me {
-      id
-    }
     consultations(status: "active") {
       id
       status
@@ -20,12 +18,18 @@ const GET_DOCTOR_STATS = gql`
 
 const GET_ADMIN_STATS = gql`
   query GetAdminStats {
-    doctors {
+    allDoctors {
+      id
+    }
+    allPatients {
       id
     }
     consultations {
       id
       status
+    }
+    pendingDoctors {
+      id
     }
   }
 `;
@@ -53,33 +57,33 @@ export default function DashboardPage() {
     ? [
         {
           title: "Médecins",
-          value: adminData?.doctors?.length || 0,
+          value: (adminData as any)?.allDoctors?.length || 0,
           icon: Users,
           description: "Médecins enregistrés",
         },
         {
+          title: "Patients",
+          value: (adminData as any)?.allPatients?.length || 0,
+          icon: Users,
+          description: "Patients enregistrés",
+        },
+        {
+          title: "En attente",
+          value: (adminData as any)?.pendingDoctors?.length || 0,
+          icon: MessageSquare,
+          description: "Médecins à valider",
+        },
+        {
           title: "Consultations",
-          value: adminData?.consultations?.length || 0,
+          value: (adminData as any)?.consultations?.length || 0,
           icon: MessageSquare,
           description: "Total consultations",
-        },
-        {
-          title: "Revenus",
-          value: "2,450,000 Ar",
-          icon: DollarSign,
-          description: "Chiffre d'affaires",
-        },
-        {
-          title: "Croissance",
-          value: "+12.5%",
-          icon: TrendingUp,
-          description: "Ce mois",
         },
       ]
     : [
         {
           title: "Consultations actives",
-          value: doctorData?.consultations?.length || 0,
+          value: (doctorData as any)?.consultations?.length || 0,
           icon: MessageSquare,
           description: "En cours",
         },

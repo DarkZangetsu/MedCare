@@ -29,9 +29,11 @@ class Doctor(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     name = models.CharField(max_length=200)
     specialty = models.CharField(max_length=200)
+    phone = models.CharField(max_length=20, null=True, blank=True)
     avatar = models.URLField(null=True, blank=True)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     is_online = models.BooleanField(default=False)
+    is_approved = models.BooleanField(default=False)  # Validation par l'admin
     rating = models.DecimalField(max_digits=3, decimal_places=2, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -42,6 +44,23 @@ class Doctor(models.Model):
 
     def __str__(self):
         return f"Dr. {self.name} - {self.specialty}"
+
+
+class Admin(models.Model):
+    """Modèle pour les administrateurs"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    name = models.CharField(max_length=200)
+    email = models.EmailField(unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'admins'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Admin: {self.name}"
 
 
 class Reminder(models.Model):

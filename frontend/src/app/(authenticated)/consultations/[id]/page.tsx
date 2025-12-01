@@ -2,7 +2,10 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
-import { useQuery, useMutation, useSubscription, gql } from "@apollo/client";
+import { gql } from "@apollo/client";
+import { useQuery } from "@apollo/client/react";
+import { useMutation } from "@apollo/client/react";
+import { useSubscription } from "@apollo/client/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -89,8 +92,8 @@ export default function ConsultationChatPage() {
     skip: !consultationId,
   });
 
-  const consultation = data?.consultation;
-  const messages = consultation?.messages || [];
+  const consultation = (data as any)?.consultation || [];
+  const messages = (consultation as any)?.messages || [] as any;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

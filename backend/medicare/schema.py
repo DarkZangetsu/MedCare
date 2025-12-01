@@ -5,13 +5,9 @@ from graphql_jwt import mutations as graphql_jwt
 from graphql_jwt.decorators import login_required
 from graphql_jwt.shortcuts import get_token
 from .models import (
-    Patient, Doctor, Reminder, JournalEntry, Consultation,
-    Message, Payment, AITriage, OTPCode
+    Patient, Doctor, Admin, Reminder, JournalEntry, Consultation,
+    Message, Payment, AITriage
 )
-from datetime import datetime, timedelta
-import random
-import string
-from django.utils import timezone
 
 
 # ==================== TYPES ====================
@@ -33,9 +29,33 @@ class PatientType(DjangoObjectType):
 
 
 class DoctorType(DjangoObjectType):
+    email = graphene.String()
+    phone = graphene.String()
+    is_approved = graphene.Boolean()
+    
     class Meta:
         model = Doctor
-        fields = ('id', 'name', 'specialty', 'avatar', 'price', 'is_online', 'rating')
+        fields = ('id', 'name', 'specialty', 'phone', 'avatar', 'price', 'is_online', 'is_approved', 'rating')
+    
+    def resolve_email(self, info):
+        return self.user.email if self.user else None
+    
+    def resolve_phone(self, info):
+        return self.phone if self.phone else None
+    
+    def resolve_is_approved(self, info):
+        return getattr(self, 'is_approved', False)
+
+
+class AdminType(DjangoObjectType):
+    email = graphene.String()
+    
+    class Meta:
+        model = Admin
+        fields = ('id', 'name', 'email', 'created_at')
+    
+    def resolve_email(self, info):
+        return self.email
 
 
 class ReminderType(DjangoObjectType):
@@ -192,6 +212,107 @@ class Login(graphene.Mutation):
             raise Exception(f"Erreur lors de la connexion: {str(e)}")
 
 
+class LoginDoctor(graphene.Mutation):
+    class Arguments:
+        email = graphene.String(required=False)
+        phone = graphene.String(required=False)
+        password = graphene.String(required=True)
+
+    token = graphene.String()
+    doctor = graphene.Field(DoctorType)
+
+    def mutate(self, info, password, email=None, phone=None):
+        try:
+            # Vérifier qu'au moins email ou phone est fourni
+            if not email and not phone:
+                raise Exception("Email ou numéro de téléphone requis")
+            
+            # Récupérer l'utilisateur par email ou phone
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            
+            user = None
+            if email:
+                email = email.strip().lower()
+                try:
+                    user = User.objects.get(email=email)
+                except User.DoesNotExist:
+                    raise Exception("Email ou mot de passe incorrect")
+            elif phone:
+                phone = phone.strip()
+                # Chercher le médecin par le champ phone
+                try:
+                    doctor = Doctor.objects.get(phone=phone)
+                    user = doctor.user
+                except Doctor.DoesNotExist:
+                    raise Exception("Numéro de téléphone ou mot de passe incorrect")
+            
+            if not user:
+                raise Exception("Identifiant ou mot de passe incorrect")
+            
+            # Vérifier le mot de passe
+            from django.contrib.auth import authenticate
+            authenticated_user = authenticate(username=user.username, password=password)
+            
+            if not authenticated_user:
+                raise Exception("Identifiant ou mot de passe incorrect")
+            
+            # Vérifier que c'est un médecin
+            try:
+                doctor = Doctor.objects.get(user=authenticated_user)
+            except Doctor.DoesNotExist:
+                raise Exception("Ce compte n'est pas un compte médecin")
+            
+            # Générer un token JWT
+            token = get_token(authenticated_user)
+            
+            return LoginDoctor(token=token, doctor=doctor)
+        except Exception as e:
+            raise Exception(f"Erreur lors de la connexion: {str(e)}")
+
+
+class LoginAdmin(graphene.Mutation):
+    class Arguments:
+        email = graphene.String(required=True)
+        password = graphene.String(required=True)
+
+    token = graphene.String()
+    admin = graphene.Field(AdminType)
+
+    def mutate(self, info, email, password):
+        try:
+            email = email.strip().lower()
+            
+            # Récupérer l'utilisateur par email
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            
+            try:
+                user = User.objects.get(email=email)
+            except User.DoesNotExist:
+                raise Exception("Email ou mot de passe incorrect")
+            
+            # Vérifier le mot de passe
+            from django.contrib.auth import authenticate
+            authenticated_user = authenticate(username=user.username, password=password)
+            
+            if not authenticated_user:
+                raise Exception("Email ou mot de passe incorrect")
+            
+            # Vérifier que c'est un administrateur
+            try:
+                admin = Admin.objects.get(user=authenticated_user)
+            except Admin.DoesNotExist:
+                raise Exception("Ce compte n'est pas un compte administrateur")
+            
+            # Générer un token JWT
+            token = get_token(authenticated_user)
+            
+            return LoginAdmin(token=token, admin=admin)
+        except Exception as e:
+            raise Exception(f"Erreur lors de la connexion: {str(e)}")
+
+
 class UpdateProfile(graphene.Mutation):
     class Arguments:
         input = ProfileInput(required=True)
@@ -282,11 +403,16 @@ class Query(graphene.ObjectType):
     journal_entries = graphene.List(JournalEntryType, date=graphene.String())
     
     # Queries pour les consultations
-    consultations = graphene.List(ConsultationType)
+    consultations = graphene.List(ConsultationType, status=graphene.String())
     consultation = graphene.Field(ConsultationType, id=graphene.UUID(required=True))
     
     # Queries pour les triages IA
     ai_triages = graphene.List(AITriageType)
+    
+    # Queries admin
+    all_patients = graphene.List(PatientType)
+    all_doctors = graphene.List(DoctorType)
+    pending_doctors = graphene.List(DoctorType)  # Médecins en attente de validation
 
     def resolve_doctors(self, info):
         return Doctor.objects.filter(is_online=True).order_by('-rating', 'name')
@@ -330,14 +456,34 @@ class Query(graphene.ObjectType):
             return []
     
     @login_required
-    def resolve_consultations(self, info):
-        # Filtrer par patient authentifié
+    def resolve_consultations(self, info, status=None):
+        # Filtrer par patient ou docteur authentifié
         user = info.context.user
+        
+        # Vérifier que l'utilisateur est authentifié
+        if not user or not user.is_authenticated:
+            raise Exception("Vous devez être authentifié pour accéder aux consultations")
+        
+        queryset = None
+        
+        # Vérifier si c'est un patient
         try:
             patient = Patient.objects.get(user=user)
-            return Consultation.objects.filter(patient=patient).order_by('-created_at')
+            queryset = Consultation.objects.filter(patient=patient)
         except Patient.DoesNotExist:
-            return []
+            # Vérifier si c'est un docteur
+            try:
+                doctor = Doctor.objects.get(user=user)
+                queryset = Consultation.objects.filter(doctor=doctor)
+            except Doctor.DoesNotExist:
+                # Si ni patient ni docteur, retourner une liste vide
+                return []
+        
+        # Filtrer par status si fourni
+        if status:
+            queryset = queryset.filter(status=status)
+        
+        return queryset.order_by('-created_at')
     
     def resolve_consultation(self, info, id):
         try:
@@ -354,16 +500,75 @@ class Query(graphene.ObjectType):
             return AITriage.objects.filter(patient=patient).order_by('-created_at')
         except Patient.DoesNotExist:
             return []
+    
+    # Resolvers admin
+    @login_required
+    def resolve_all_patients(self, info):
+        # Vérifier que l'utilisateur est admin
+        user = info.context.user
+        try:
+            Admin.objects.get(user=user)
+        except Admin.DoesNotExist:
+            raise Exception("Accès refusé. Administrateur requis.")
+        return Patient.objects.all().order_by('-created_at')
+    
+    @login_required
+    def resolve_all_doctors(self, info):
+        # Vérifier que l'utilisateur est admin
+        user = info.context.user
+        try:
+            Admin.objects.get(user=user)
+        except Admin.DoesNotExist:
+            raise Exception("Accès refusé. Administrateur requis.")
+        return Doctor.objects.all().order_by('-created_at')
+    
+    @login_required
+    def resolve_pending_doctors(self, info):
+        # Vérifier que l'utilisateur est admin
+        user = info.context.user
+        try:
+            Admin.objects.get(user=user)
+        except Admin.DoesNotExist:
+            raise Exception("Accès refusé. Administrateur requis.")
+        return Doctor.objects.filter(is_approved=False).order_by('-created_at')
 
 
 # ==================== MUTATIONS ROOT ====================
 
+class ApproveDoctor(graphene.Mutation):
+    class Arguments:
+        id = graphene.UUID(required=True)
+        approved = graphene.Boolean(required=True)
+
+    doctor = graphene.Field(DoctorType)
+
+    @login_required
+    def mutate(self, info, id, approved):
+        # Vérifier que l'utilisateur est admin
+        user = info.context.user
+        try:
+            Admin.objects.get(user=user)
+        except Admin.DoesNotExist:
+            raise Exception("Accès refusé. Administrateur requis.")
+        
+        try:
+            doctor = Doctor.objects.get(id=id)
+            doctor.is_approved = approved
+            doctor.save()
+            return ApproveDoctor(doctor=doctor)
+        except Doctor.DoesNotExist:
+            raise Exception("Médecin non trouvé")
+
+
 class Mutation(graphene.ObjectType):
     # Mutations personnalisées
     register = Register.Field()
-    login = Login.Field()
+    login = Login.Field()  # Pour les patients
+    login_doctor = LoginDoctor.Field()  # Pour les médecins
+    login_admin = LoginAdmin.Field()  # Pour les administrateurs
     update_profile = UpdateProfile.Field()
     ai_triage = AITriage.Field()
+    approve_doctor = ApproveDoctor.Field()  # Pour approuver/refuser un médecin
     
     # Mutations JWT (authentification)
     token_auth = graphql_jwt.ObtainJSONWebToken.Field()

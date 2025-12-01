@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useQuery, gql } from "@apollo/client";
+import { gql } from "@apollo/client";
+import { useQuery } from "@apollo/client/react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -46,7 +46,7 @@ export default function ConsultationsPage() {
   if (loading) return <div className="text-center">Chargement...</div>;
   if (error) return <div className="text-center text-destructive">Erreur: {error.message}</div>;
 
-  const consultations = data?.consultations || [];
+  const consultations = (data as any)?.consultations || [];
 
   return (
     <div className="space-y-6">

@@ -25,6 +25,7 @@ const doctorNavItems = [
 const adminNavItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/doctors", label: "Médecins", icon: Users },
+  { href: "/patients", label: "Patients", icon: Users },
   { href: "/payments", label: "Paiements", icon: DollarSign },
   { href: "/logs", label: "Logs", icon: FileText },
   { href: "/settings", label: "Paramètres", icon: Settings },

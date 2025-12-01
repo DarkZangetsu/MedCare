@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { FileText, AlertCircle, CheckCircle, Info } from "lucide-react";
+import {  AlertCircle, CheckCircle, Info } from "lucide-react";
 
 // Mock data - À remplacer par une vraie query GraphQL
 const mockLogs = [
