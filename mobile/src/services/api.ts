@@ -7,7 +7,7 @@ import Constants from 'expo-constants';
 const GRAPHQL_URI = 
   Constants.expoConfig?.extra?.graphqlUri || 
   __DEV__ 
-    ? 'http://192.168.0.100:8000/graphql/'  // IP de votre machine pour Android
+    ? 'http://192.168.0.106:8000/graphql/'  // IP de la machine pour Android ou bien celui du serveur backend
     : 'http://localhost:8000/graphql/';
 
 const httpLink = createHttpLink({
@@ -104,6 +104,96 @@ export const AI_TRIAGE = gql`
       severity
       advice
       recommendation
+    }
+  }
+`;
+
+export const GET_REMINDERS = gql`
+  query GetReminders {
+    reminders {
+      id
+      type
+      title
+      description
+      date
+      time
+      isActive
+      notificationId
+    }
+  }
+`;
+
+export const CREATE_REMINDER = gql`
+  mutation CreateReminder(
+    $type: String!
+    $title: String!
+    $description: String
+    $date: String!
+    $time: String!
+    $notificationId: String
+  ) {
+    createReminder(
+      type: $type
+      title: $title
+      description: $description
+      date: $date
+      time: $time
+      notificationId: $notificationId
+    ) {
+      reminder {
+        id
+        type
+        title
+        description
+        date
+        time
+        isActive
+        notificationId
+      }
+    }
+  }
+`;
+
+export const UPDATE_REMINDER = gql`
+  mutation UpdateReminder(
+    $id: UUID!
+    $type: String
+    $title: String
+    $description: String
+    $date: String
+    $time: String
+    $isActive: Boolean
+    $notificationId: String
+  ) {
+    updateReminder(
+      id: $id
+      type: $type
+      title: $title
+      description: $description
+      date: $date
+      time: $time
+      isActive: $isActive
+      notificationId: $notificationId
+    ) {
+      reminder {
+        id
+        type
+        title
+        description
+        date
+        time
+        isActive
+        notificationId
+      }
+    }
+  }
+`;
+
+export const DELETE_REMINDER = gql`
+  mutation DeleteReminder($id: UUID!) {
+    deleteReminder(id: $id) {
+      success
+      message
     }
   }
 `;

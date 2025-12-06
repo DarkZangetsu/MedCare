@@ -59,9 +59,18 @@ class AdminType(DjangoObjectType):
 
 
 class ReminderType(DjangoObjectType):
+    isActive = graphene.Boolean()
+    notificationId = graphene.String()
+    
     class Meta:
         model = Reminder
         fields = ('id', 'type', 'title', 'description', 'date', 'time', 'is_active', 'notification_id')
+    
+    def resolve_isActive(self, info):
+        return self.is_active
+    
+    def resolve_notificationId(self, info):
+        return self.notification_id
 
 
 class JournalEntryType(DjangoObjectType):
@@ -341,6 +350,111 @@ class UpdateProfile(graphene.Mutation):
         return UpdateProfile(patient=patient)
 
 
+class CreateReminder(graphene.Mutation):
+    class Arguments:
+        type = graphene.String(required=True)
+        title = graphene.String(required=True)
+        description = graphene.String()
+        date = graphene.String(required=True)
+        time = graphene.String(required=True)
+        notification_id = graphene.String()
+        notificationId = graphene.String()  # Alias camelCase
+
+    reminder = graphene.Field(ReminderType)
+
+    @login_required
+    def mutate(self, info, type, title, description=None, date=None, time=None, notification_id=None, notificationId=None):
+        user = info.context.user
+        try:
+            patient = Patient.objects.get(user=user)
+        except Patient.DoesNotExist:
+            raise Exception("Patient non trouvé")
+        
+        reminder = Reminder.objects.create(
+            patient=patient,
+            type=type,
+            title=title,
+            description=description,
+            date=date,
+            time=time,
+            is_active=True,
+            notification_id=notification_id or notificationId
+        )
+        
+        return CreateReminder(reminder=reminder)
+
+
+class UpdateReminder(graphene.Mutation):
+    class Arguments:
+        id = graphene.UUID(required=True)
+        type = graphene.String()
+        title = graphene.String()
+        description = graphene.String()
+        date = graphene.String()
+        time = graphene.String()
+        is_active = graphene.Boolean()
+        isActive = graphene.Boolean()  # Alias camelCase
+        notification_id = graphene.String()
+        notificationId = graphene.String()  # Alias camelCase
+
+    reminder = graphene.Field(ReminderType)
+
+    @login_required
+    def mutate(self, info, id, type=None, title=None, description=None, date=None, time=None, is_active=None, isActive=None, notification_id=None, notificationId=None):
+        user = info.context.user
+        try:
+            patient = Patient.objects.get(user=user)
+        except Patient.DoesNotExist:
+            raise Exception("Patient non trouvé")
+        
+        try:
+            reminder = Reminder.objects.get(id=id, patient=patient)
+        except Reminder.DoesNotExist:
+            raise Exception("Rappel non trouvé ou accès refusé")
+        
+        if type is not None:
+            reminder.type = type
+        if title is not None:
+            reminder.title = title
+        if description is not None:
+            reminder.description = description
+        if date is not None:
+            reminder.date = date
+        if time is not None:
+            reminder.time = time
+        if is_active is not None or isActive is not None:
+            reminder.is_active = is_active if is_active is not None else isActive
+        if notification_id is not None or notificationId is not None:
+            reminder.notification_id = notification_id if notification_id is not None else notificationId
+        
+        reminder.save()
+        
+        return UpdateReminder(reminder=reminder)
+
+
+class DeleteReminder(graphene.Mutation):
+    class Arguments:
+        id = graphene.UUID(required=True)
+
+    success = graphene.Boolean()
+    message = graphene.String()
+
+    @login_required
+    def mutate(self, info, id):
+        user = info.context.user
+        try:
+            patient = Patient.objects.get(user=user)
+        except Patient.DoesNotExist:
+            raise Exception("Patient non trouvé")
+        
+        try:
+            reminder = Reminder.objects.get(id=id, patient=patient)
+            reminder.delete()
+            return DeleteReminder(success=True, message="Rappel supprimé avec succès")
+        except Reminder.DoesNotExist:
+            raise Exception("Rappel non trouvé ou accès refusé")
+
+
 class AITriage(graphene.Mutation):
     class Arguments:
         symptoms = graphene.String(required=True)
@@ -438,7 +552,8 @@ class Query(graphene.ObjectType):
         user = info.context.user
         try:
             patient = Patient.objects.get(user=user)
-            return Reminder.objects.filter(patient=patient, is_active=True).order_by('date', 'time')
+            # Retourner tous les rappels du patient (actifs et inactifs)
+            return Reminder.objects.filter(patient=patient).order_by('date', 'time')
         except Patient.DoesNotExist:
             return []
     
@@ -569,6 +684,9 @@ class Mutation(graphene.ObjectType):
     update_profile = UpdateProfile.Field()
     ai_triage = AITriage.Field()
     approve_doctor = ApproveDoctor.Field()  # Pour approuver/refuser un médecin
+    create_reminder = CreateReminder.Field()  # Pour créer un rappel
+    update_reminder = UpdateReminder.Field()  # Pour mettre à jour un rappel
+    delete_reminder = DeleteReminder.Field()  # Pour supprimer un rappel
     
     # Mutations JWT (authentification)
     token_auth = graphql_jwt.ObtainJSONWebToken.Field()

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -12,8 +13,12 @@ import { fr } from 'date-fns/locale';
 export default function DashboardScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
-  const { getUpcomingReminders } = useRemindersStore();
+  const { getUpcomingReminders, fetchReminders } = useRemindersStore();
   const upcomingReminders = getUpcomingReminders();
+
+  useEffect(() => {
+    fetchReminders();
+  }, []);
 
   const quickActions = [
     {

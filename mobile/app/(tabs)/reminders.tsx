@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { useState, useEffect } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,8 +14,12 @@ import { cancelNotification, scheduleReminderNotification } from '../../src/serv
 
 export default function RemindersScreen() {
   const router = useRouter();
-  const { reminders, deleteReminder, updateReminder } = useRemindersStore();
+  const { reminders, isLoading, fetchReminders, deleteReminder, updateReminder } = useRemindersStore();
   const [selectedType, setSelectedType] = useState<'all' | Reminder['type']>('all');
+
+  useEffect(() => {
+    fetchReminders();
+  }, []);
 
   const filteredReminders = reminders.filter(
     (r) => selectedType === 'all' || r.type === selectedType
@@ -39,8 +43,9 @@ export default function RemindersScreen() {
       };
       
       await updateReminder(reminder.id, updatedReminder);
+      await fetchReminders();
     } catch (error: any) {
-      Alert.alert('Erreur', error.message);
+      Alert.alert('Erreur', error.message || 'Impossible de mettre à jour le rappel');
     }
   };
 
@@ -54,10 +59,15 @@ export default function RemindersScreen() {
           text: 'Supprimer',
           style: 'destructive',
           onPress: async () => {
-            if (reminder.notificationId) {
-              await cancelNotification(reminder.notificationId);
+            try {
+              if (reminder.notificationId) {
+                await cancelNotification(reminder.notificationId);
+              }
+              await deleteReminder(reminder.id);
+              await fetchReminders();
+            } catch (error: any) {
+              Alert.alert('Erreur', error.message || 'Impossible de supprimer le rappel');
             }
-            await deleteReminder(reminder.id);
           },
         },
       ]
@@ -114,7 +124,12 @@ export default function RemindersScreen() {
       </View>
 
       <ScrollView className="flex-1" contentContainerStyle={{ padding: 16 }}>
-        {filteredReminders.length === 0 ? (
+        {isLoading ? (
+          <View className="items-center justify-center py-16">
+            <ActivityIndicator size="large" color="#2563EB" />
+            <Text className="text-gray-600 text-center mt-4">Chargement des rappels...</Text>
+          </View>
+        ) : filteredReminders.length === 0 ? (
           <View className="items-center justify-center py-16">
             <Ionicons name="alarm-outline" size={72} color="#9CA3AF" />
             <Text className="text-gray-600 text-center mt-6 text-base">

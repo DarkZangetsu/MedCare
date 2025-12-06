@@ -49,9 +49,13 @@ export default function ReminderFormScreen() {
         notificationId,
       });
 
+      // Recharger les rappels après création
+      await fetchReminders();
+
       router.back();
     } catch (error: any) {
       console.error('Error creating reminder:', error);
+      Alert.alert('Erreur', error.message || 'Impossible de créer le rappel');
     } finally {
       setIsLoading(false);
     }
