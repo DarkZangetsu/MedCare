@@ -73,186 +73,236 @@ export default function ReminderFormScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         className="flex-1"
       >
-        <View className="bg-white px-5 py-5 border-b border-gray-200">
-          <Text className="text-2xl font-bold text-gray-900">Nouveau rappel</Text>
+        {/* Header avec bouton retour */}
+        <View className="bg-white px-5 py-4 border-b border-gray-200 flex-row items-center">
+          <TouchableOpacity
+            onPress={() => router.back()}
+            className="mr-4 p-2 -ml-2"
+          >
+            <Ionicons name="arrow-back" size={24} color="#1F2937" />
+          </TouchableOpacity>
+          <Text className="text-2xl font-bold text-gray-900 flex-1">Nouveau rappel</Text>
         </View>
 
-        <ScrollView className="flex-1" contentContainerStyle={{ padding: 20 }}>
-          {/* Type */}
+        <ScrollView 
+          className="flex-1" 
+          contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Section: Type de rappel */}
           <View className="mb-6">
-            <Text className="text-sm font-semibold text-gray-700 mb-3">Type de rappel</Text>
+            <Text className="text-base font-bold text-gray-900 mb-4">Type de rappel</Text>
             <View className="flex-row gap-3">
               {(['medication', 'appointment', 'analysis'] as const).map((t) => (
-                <Button
+                <TouchableOpacity
                   key={t}
-                  title={
-                    t === 'medication'
+                  onPress={() => setType(t)}
+                  className={`flex-1 py-3.5 px-4 rounded-xl border-2 items-center justify-center ${
+                    type === t
+                      ? 'bg-blue-600 border-blue-600'
+                      : 'bg-white border-gray-200'
+                  }`}
+                >
+                  <Ionicons
+                    name={
+                      t === 'medication'
+                        ? 'medical'
+                        : t === 'appointment'
+                        ? 'calendar'
+                        : 'flask'
+                    }
+                    size={24}
+                    color={type === t ? '#FFFFFF' : '#6B7280'}
+                  />
+                  <Text
+                    className={`text-sm font-semibold mt-2 ${
+                      type === t ? 'text-white' : 'text-gray-700'
+                    }`}
+                  >
+                    {t === 'medication'
                       ? 'Médicament'
                       : t === 'appointment'
-                      ? 'RDV'
-                      : 'Analyse'
-                  }
-                  onPress={() => setType(t)}
-                  variant={type === t ? 'primary' : 'outline'}
-                  size="sm"
-                  className="flex-1"
-                />
+                      ? 'Rendez-vous'
+                      : 'Analyse'}
+                  </Text>
+                </TouchableOpacity>
               ))}
             </View>
           </View>
 
-          <View className="mb-5">
-            <Input
-              label="Titre"
-              value={title}
-              onChangeText={setTitle}
-              placeholder="Ex: Prendre médicament"
-            />
+          {/* Section: Informations principales */}
+          <View className="mb-6">
+            <Text className="text-base font-bold text-gray-900 mb-4">Informations</Text>
+            
+            <View className="mb-4">
+              <Input
+                label="Titre *"
+                value={title}
+                onChangeText={setTitle}
+                placeholder="Ex: Prendre médicament"
+              />
+            </View>
+
+            {/* Date et Heure dans une carte */}
+            <View className="bg-white rounded-xl p-4 border border-gray-200 mb-4">
+              <Text className="text-sm font-semibold text-gray-700 mb-3">Date et heure</Text>
+              <View className="flex-row gap-3">
+                <TouchableOpacity
+                  onPress={() => setShowDatePicker(true)}
+                  className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-4 py-3.5 flex-row items-center justify-between"
+                >
+                  <View className="flex-1">
+                    <Text className="text-xs text-gray-500 mb-1">Date</Text>
+                    <Text className="text-base font-medium text-gray-900">
+                      {date.toLocaleDateString('fr-FR', {
+                        day: 'numeric',
+                        month: 'short',
+                      })}
+                    </Text>
+                  </View>
+                  <Ionicons name="calendar-outline" size={20} color="#6B7280" />
+                </TouchableOpacity>
+                {showDatePicker && (
+                  <DateTimePicker
+                    value={date}
+                    mode="date"
+                    display="default"
+                    onChange={(event, selectedDate) => {
+                      setShowDatePicker(false);
+                      if (selectedDate) setDate(selectedDate);
+                    }}
+                    minimumDate={new Date()}
+                  />
+                )}
+
+                <TouchableOpacity
+                  onPress={() => setShowTimePicker(true)}
+                  className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-4 py-3.5 flex-row items-center justify-between"
+                >
+                  <View className="flex-1">
+                    <Text className="text-xs text-gray-500 mb-1">Heure</Text>
+                    <Text className="text-base font-medium text-gray-900">
+                      {time.toLocaleTimeString('fr-FR', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </Text>
+                  </View>
+                  <Ionicons name="time-outline" size={20} color="#6B7280" />
+                </TouchableOpacity>
+                {showTimePicker && (
+                  <DateTimePicker
+                    value={time}
+                    mode="time"
+                    display="default"
+                    onChange={(event, selectedTime) => {
+                      setShowTimePicker(false);
+                      if (selectedTime) setTime(selectedTime);
+                    }}
+                  />
+                )}
+              </View>
+            </View>
           </View>
 
-          {/* Fréquence (uniquement pour les médicaments) */}
+          {/* Section: Fréquence (uniquement pour les médicaments) */}
           {type === 'medication' && (
             <View className="mb-6">
-              <Text className="text-sm font-semibold text-gray-700 mb-3">Fréquence</Text>
-              <View className="flex-row gap-2 flex-wrap">
-                {(['once', 'daily', 'weekly', 'monthly'] as const).map((freq) => (
-                  <Button
-                    key={freq}
-                    title={
-                      freq === 'once'
-                        ? 'Une fois'
-                        : freq === 'daily'
-                        ? 'Tous les jours'
-                        : freq === 'weekly'
-                        ? 'Toutes les semaines'
-                        : 'Tous les mois'
-                    }
-                    onPress={() => {
-                      setFrequency(freq);
-                      if (freq === 'once') {
-                        setEndDate(null);
-                      }
-                    }}
-                    variant={frequency === freq ? 'primary' : 'outline'}
-                    size="sm"
-                    className="flex-1 min-w-[45%]"
-                  />
-                ))}
-              </View>
-              
-              {/* Date de fin (pour les rappels récurrents) */}
-              {frequency !== 'once' && (
-                <View className="mt-4">
-                  <Text className="text-sm font-semibold text-gray-700 mb-2.5">Date de fin (optionnel)</Text>
-                  <TouchableOpacity
-                    onPress={() => setShowEndDatePicker(true)}
-                    className="bg-white border border-gray-300 rounded-lg px-4 py-3.5 flex-row items-center justify-between"
-                  >
-                    <Text className="text-gray-900 text-base">
-                      {endDate
-                        ? endDate.toLocaleDateString('fr-FR', {
-                            weekday: 'short',
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric',
-                          })
-                        : 'Sélectionner une date'}
-                    </Text>
-                    <Ionicons name="calendar-outline" size={20} color="#6B7280" />
-                  </TouchableOpacity>
-                  {showEndDatePicker && (
-                    <DateTimePicker
-                      value={endDate || new Date()}
-                      mode="date"
-                      display="default"
-                      onChange={(event, selectedDate) => {
-                        setShowEndDatePicker(false);
-                        if (selectedDate) setEndDate(selectedDate);
+              <Text className="text-base font-bold text-gray-900 mb-4">Fréquence</Text>
+              <View className="bg-white rounded-xl p-4 border border-gray-200">
+                <View className="flex-row gap-2 flex-wrap">
+                  {(['once', 'daily', 'weekly', 'monthly'] as const).map((freq) => (
+                    <TouchableOpacity
+                      key={freq}
+                      onPress={() => {
+                        setFrequency(freq);
+                        if (freq === 'once') {
+                          setEndDate(null);
+                        }
                       }}
-                      minimumDate={date}
-                    />
-                  )}
+                      className={`py-2.5 px-4 rounded-lg border-2 flex-1 min-w-[45%] ${
+                        frequency === freq
+                          ? 'bg-blue-600 border-blue-600'
+                          : 'bg-gray-50 border-gray-200'
+                      }`}
+                    >
+                      <Text
+                        className={`text-sm font-semibold text-center ${
+                          frequency === freq ? 'text-white' : 'text-gray-700'
+                        }`}
+                      >
+                        {freq === 'once'
+                          ? 'Une fois'
+                          : freq === 'daily'
+                          ? 'Tous les jours'
+                          : freq === 'weekly'
+                          ? 'Toutes les semaines'
+                          : 'Tous les mois'}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
-              )}
+                
+                {/* Date de fin (pour les rappels récurrents) */}
+                {frequency !== 'once' && (
+                  <View className="mt-4 pt-4 border-t border-gray-200">
+                    <Text className="text-sm font-semibold text-gray-700 mb-2.5">Date de fin (optionnel)</Text>
+                    <TouchableOpacity
+                      onPress={() => setShowEndDatePicker(true)}
+                      className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3.5 flex-row items-center justify-between"
+                    >
+                      <Text className={`text-base ${endDate ? 'text-gray-900 font-medium' : 'text-gray-400'}`}>
+                        {endDate
+                          ? endDate.toLocaleDateString('fr-FR', {
+                              day: 'numeric',
+                              month: 'long',
+                              year: 'numeric',
+                            })
+                          : 'Sélectionner une date'}
+                      </Text>
+                      <Ionicons name="calendar-outline" size={20} color="#6B7280" />
+                    </TouchableOpacity>
+                    {showEndDatePicker && (
+                      <DateTimePicker
+                        value={endDate || new Date()}
+                        mode="date"
+                        display="default"
+                        onChange={(event, selectedDate) => {
+                          setShowEndDatePicker(false);
+                          if (selectedDate) setEndDate(selectedDate);
+                        }}
+                        minimumDate={date}
+                      />
+                    )}
+                  </View>
+                )}
+              </View>
             </View>
           )}
 
-          <View className="mb-5">
-            <Input
-              label="Description (optionnel)"
-              value={description}
-              onChangeText={setDescription}
-              placeholder="Détails supplémentaires"
-              multiline
-              numberOfLines={4}
-            />
-          </View>
-
-          {/* Date et Heure */}
-          <View className="flex-row gap-4 mb-5">
-            <View className="flex-1">
-              <Text className="text-sm font-semibold text-gray-700 mb-2.5">Date</Text>
-              <TouchableOpacity
-                onPress={() => setShowDatePicker(true)}
-                className="bg-white border border-gray-300 rounded-lg px-4 py-3.5 flex-row items-center justify-between"
-              >
-                <Text className="text-gray-900 text-base">
-                  {date.toLocaleDateString('fr-FR', {
-                    weekday: 'short',
-                    day: 'numeric',
-                    month: 'short',
-                    year: 'numeric',
-                  })}
-                </Text>
-                <Ionicons name="calendar-outline" size={20} color="#6B7280" />
-              </TouchableOpacity>
-              {showDatePicker && (
-                <DateTimePicker
-                  value={date}
-                  mode="date"
-                  display="default"
-                  onChange={(event, selectedDate) => {
-                    setShowDatePicker(false);
-                    if (selectedDate) setDate(selectedDate);
-                  }}
-                  minimumDate={new Date()}
-                />
-              )}
-            </View>
-
-            <View className="flex-1">
-              <Text className="text-sm font-semibold text-gray-700 mb-2.5">Heure</Text>
-              <TouchableOpacity
-                onPress={() => setShowTimePicker(true)}
-                className="bg-white border border-gray-300 rounded-lg px-4 py-3.5 flex-row items-center justify-between"
-              >
-                <Text className="text-gray-900 text-base">
-                  {time.toLocaleTimeString('fr-FR', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </Text>
-                <Ionicons name="time-outline" size={20} color="#6B7280" />
-              </TouchableOpacity>
-              {showTimePicker && (
-                <DateTimePicker
-                  value={time}
-                  mode="time"
-                  display="default"
-                  onChange={(event, selectedTime) => {
-                    setShowTimePicker(false);
-                    if (selectedTime) setTime(selectedTime);
-                  }}
-                />
-              )}
+          {/* Section: Description */}
+          <View className="mb-6">
+            <Text className="text-base font-bold text-gray-900 mb-4">Détails supplémentaires</Text>
+            <View className="bg-white rounded-xl p-4 border border-gray-200">
+              <Input
+                label=""
+                value={description}
+                onChangeText={setDescription}
+                placeholder="Ajouter une description ou des notes..."
+                multiline
+                numberOfLines={4}
+                className="min-h-[100px]"
+              />
             </View>
           </View>
 
+          {/* Bouton d'enregistrement */}
           <Button
             title="Enregistrer le rappel"
             onPress={handleSave}
             isLoading={isLoading}
             className="mt-2"
+            disabled={!title.trim()}
           />
         </ScrollView>
       </KeyboardAvoidingView>
