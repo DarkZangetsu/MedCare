@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, ScrollView, KeyboardAvoidingView, Platform, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, KeyboardAvoidingView, Platform, TouchableOpacity, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -13,7 +13,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 
 export default function ReminderFormScreen() {
   const router = useRouter();
-  const { addReminder } = useRemindersStore();
+  const { addReminder, fetchReminders } = useRemindersStore();
   const [type, setType] = useState<Reminder['type']>('medication');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');

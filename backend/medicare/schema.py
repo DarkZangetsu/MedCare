@@ -370,6 +370,31 @@ class CreateReminder(graphene.Mutation):
         except Patient.DoesNotExist:
             raise Exception("Patient non trouvé")
         
+        # Convertir les chaînes en objets date et time
+        from datetime import datetime, date as date_obj, time as time_obj
+        
+        if date:
+            try:
+                if isinstance(date, str):
+                    date = datetime.strptime(date, '%Y-%m-%d').date()
+                elif not isinstance(date, date_obj):
+                    raise ValueError("Format de date invalide")
+            except ValueError as e:
+                raise Exception(f"Format de date invalide: {str(e)}")
+        
+        if time:
+            try:
+                if isinstance(time, str):
+                    # Format HH:MM ou HH:MM:SS
+                    if len(time) == 5:  # HH:MM
+                        time = datetime.strptime(time, '%H:%M').time()
+                    else:  # HH:MM:SS
+                        time = datetime.strptime(time, '%H:%M:%S').time()
+                elif not isinstance(time, time_obj):
+                    raise ValueError("Format d'heure invalide")
+            except ValueError as e:
+                raise Exception(f"Format d'heure invalide: {str(e)}")
+        
         reminder = Reminder.objects.create(
             patient=patient,
             type=type,
@@ -419,9 +444,28 @@ class UpdateReminder(graphene.Mutation):
         if description is not None:
             reminder.description = description
         if date is not None:
-            reminder.date = date
+            # Convertir la chaîne en objet date si nécessaire
+            from datetime import datetime, date as date_obj
+            if isinstance(date, str):
+                try:
+                    reminder.date = datetime.strptime(date, '%Y-%m-%d').date()
+                except ValueError:
+                    raise Exception("Format de date invalide")
+            else:
+                reminder.date = date
         if time is not None:
-            reminder.time = time
+            # Convertir la chaîne en objet time si nécessaire
+            from datetime import datetime, time as time_obj
+            if isinstance(time, str):
+                try:
+                    if len(time) == 5:  # HH:MM
+                        reminder.time = datetime.strptime(time, '%H:%M').time()
+                    else:  # HH:MM:SS
+                        reminder.time = datetime.strptime(time, '%H:%M:%S').time()
+                except ValueError:
+                    raise Exception("Format d'heure invalide")
+            else:
+                reminder.time = time
         if is_active is not None or isActive is not None:
             reminder.is_active = is_active if is_active is not None else isActive
         if notification_id is not None or notificationId is not None:
