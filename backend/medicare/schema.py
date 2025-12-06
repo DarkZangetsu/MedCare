@@ -61,16 +61,20 @@ class AdminType(DjangoObjectType):
 class ReminderType(DjangoObjectType):
     isActive = graphene.Boolean()
     notificationId = graphene.String()
+    endDate = graphene.String()
     
     class Meta:
         model = Reminder
-        fields = ('id', 'type', 'title', 'description', 'date', 'time', 'is_active', 'notification_id')
+        fields = ('id', 'type', 'title', 'description', 'date', 'time', 'frequency', 'end_date', 'is_active', 'notification_id')
     
     def resolve_isActive(self, info):
         return self.is_active
     
     def resolve_notificationId(self, info):
         return self.notification_id
+    
+    def resolve_endDate(self, info):
+        return self.end_date.isoformat() if self.end_date else None
 
 
 class JournalEntryType(DjangoObjectType):
@@ -357,13 +361,16 @@ class CreateReminder(graphene.Mutation):
         description = graphene.String()
         date = graphene.String(required=True)
         time = graphene.String(required=True)
+        frequency = graphene.String()
+        end_date = graphene.String()
+        endDate = graphene.String()  # Alias camelCase
         notification_id = graphene.String()
         notificationId = graphene.String()  # Alias camelCase
 
     reminder = graphene.Field(ReminderType)
 
     @login_required
-    def mutate(self, info, type, title, description=None, date=None, time=None, notification_id=None, notificationId=None):
+    def mutate(self, info, type, title, description=None, date=None, time=None, frequency='once', end_date=None, endDate=None, notification_id=None, notificationId=None):
         user = info.context.user
         try:
             patient = Patient.objects.get(user=user)
@@ -395,18 +402,70 @@ class CreateReminder(graphene.Mutation):
             except ValueError as e:
                 raise Exception(f"Format d'heure invalide: {str(e)}")
         
-        reminder = Reminder.objects.create(
-            patient=patient,
-            type=type,
-            title=title,
-            description=description,
-            date=date,
-            time=time,
-            is_active=True,
-            notification_id=notification_id or notificationId
-        )
+        # Convertir end_date si fourni
+        end_date_obj = None
+        if end_date or endDate:
+            from datetime import datetime
+            try:
+                end_date_obj = datetime.strptime(end_date or endDate, '%Y-%m-%d').date()
+            except ValueError:
+                raise Exception("Format de date de fin invalide")
         
-        return CreateReminder(reminder=reminder)
+        # Créer les rappels selon la fréquence
+        reminders_created = []
+        current_date = date
+        
+        if frequency == 'once':
+            # Un seul rappel
+            reminder = Reminder.objects.create(
+                patient=patient,
+                type=type,
+                title=title,
+                description=description,
+                date=date,
+                time=time,
+                frequency=frequency,
+                end_date=end_date_obj,
+                is_active=True,
+                notification_id=notification_id or notificationId
+            )
+            reminders_created.append(reminder)
+        else:
+            # Rappels récurrents
+            from datetime import timedelta
+            end_date_limit = end_date_obj if end_date_obj else date + timedelta(days=365)  # Par défaut, 1 an
+            
+            while current_date <= end_date_limit:
+                reminder = Reminder.objects.create(
+                    patient=patient,
+                    type=type,
+                    title=title,
+                    description=description,
+                    date=current_date,
+                    time=time,
+                    frequency=frequency,
+                    end_date=end_date_obj,
+                    is_active=True,
+                    notification_id=notification_id or notificationId
+                )
+                reminders_created.append(reminder)
+                
+                # Calculer la prochaine date selon la fréquence
+                if frequency == 'daily':
+                    current_date += timedelta(days=1)
+                elif frequency == 'weekly':
+                    current_date += timedelta(weeks=1)
+                elif frequency == 'monthly':
+                    # Ajouter un mois (approximation)
+                    if current_date.month == 12:
+                        current_date = current_date.replace(year=current_date.year + 1, month=1)
+                    else:
+                        current_date = current_date.replace(month=current_date.month + 1)
+                else:
+                    break  # Fréquence inconnue, arrêter
+        
+        # Retourner le premier rappel créé
+        return CreateReminder(reminder=reminders_created[0] if reminders_created else None)
 
 
 class UpdateReminder(graphene.Mutation):

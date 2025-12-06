@@ -37,6 +37,8 @@ export const useRemindersStore = create<RemindersState>()((set, get) => ({
         description: r.description || undefined,
         date: r.date,
         time: r.time,
+        frequency: r.frequency || 'once',
+        endDate: r.endDate || undefined,
         isActive: r.isActive || r.is_active || true,
         notificationId: r.notificationId || r.notification_id || undefined,
       }));
@@ -57,6 +59,8 @@ export const useRemindersStore = create<RemindersState>()((set, get) => ({
           description: reminderData.description || null,
           date: reminderData.date,
           time: reminderData.time,
+          frequency: reminderData.frequency || 'once',
+          endDate: reminderData.endDate || null,
           notificationId: reminderData.notificationId || null,
         },
       });
@@ -68,6 +72,8 @@ export const useRemindersStore = create<RemindersState>()((set, get) => ({
         description: newReminder.description || undefined,
         date: newReminder.date,
         time: newReminder.time,
+        frequency: newReminder.frequency || 'once',
+        endDate: newReminder.endDate || undefined,
         isActive: newReminder.isActive || newReminder.is_active || true,
         notificationId: newReminder.notificationId || newReminder.notification_id || undefined,
       };

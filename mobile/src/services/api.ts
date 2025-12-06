@@ -117,6 +117,8 @@ export const GET_REMINDERS = gql`
       description
       date
       time
+      frequency
+      endDate
       isActive
       notificationId
     }
@@ -130,6 +132,8 @@ export const CREATE_REMINDER = gql`
     $description: String
     $date: String!
     $time: String!
+    $frequency: String
+    $endDate: String
     $notificationId: String
   ) {
     createReminder(
@@ -138,6 +142,8 @@ export const CREATE_REMINDER = gql`
       description: $description
       date: $date
       time: $time
+      frequency: $frequency
+      endDate: $endDate
       notificationId: $notificationId
     ) {
       reminder {
@@ -147,6 +153,8 @@ export const CREATE_REMINDER = gql`
         description
         date
         time
+        frequency
+        endDate
         isActive
         notificationId
       }

@@ -19,8 +19,11 @@ export default function ReminderFormScreen() {
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(new Date());
   const [time, setTime] = useState(new Date());
+  const [frequency, setFrequency] = useState<Reminder['frequency']>('once');
+  const [endDate, setEndDate] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
+  const [showEndDatePicker, setShowEndDatePicker] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSave = async () => {
@@ -36,6 +39,8 @@ export default function ReminderFormScreen() {
         description: description.trim() || undefined,
         date: date.toISOString().split('T')[0],
         time: time.toTimeString().slice(0, 5),
+        frequency: type === 'medication' ? frequency : 'once',
+        endDate: endDate ? endDate.toISOString().split('T')[0] : undefined,
         isActive: true,
       };
 
@@ -104,6 +109,73 @@ export default function ReminderFormScreen() {
               placeholder="Ex: Prendre médicament"
             />
           </View>
+
+          {/* Fréquence (uniquement pour les médicaments) */}
+          {type === 'medication' && (
+            <View className="mb-6">
+              <Text className="text-sm font-semibold text-gray-700 mb-3">Fréquence</Text>
+              <View className="flex-row gap-2 flex-wrap">
+                {(['once', 'daily', 'weekly', 'monthly'] as const).map((freq) => (
+                  <Button
+                    key={freq}
+                    title={
+                      freq === 'once'
+                        ? 'Une fois'
+                        : freq === 'daily'
+                        ? 'Tous les jours'
+                        : freq === 'weekly'
+                        ? 'Toutes les semaines'
+                        : 'Tous les mois'
+                    }
+                    onPress={() => {
+                      setFrequency(freq);
+                      if (freq === 'once') {
+                        setEndDate(null);
+                      }
+                    }}
+                    variant={frequency === freq ? 'primary' : 'outline'}
+                    size="sm"
+                    className="flex-1 min-w-[45%]"
+                  />
+                ))}
+              </View>
+              
+              {/* Date de fin (pour les rappels récurrents) */}
+              {frequency !== 'once' && (
+                <View className="mt-4">
+                  <Text className="text-sm font-semibold text-gray-700 mb-2.5">Date de fin (optionnel)</Text>
+                  <TouchableOpacity
+                    onPress={() => setShowEndDatePicker(true)}
+                    className="bg-white border border-gray-300 rounded-lg px-4 py-3.5 flex-row items-center justify-between"
+                  >
+                    <Text className="text-gray-900 text-base">
+                      {endDate
+                        ? endDate.toLocaleDateString('fr-FR', {
+                            weekday: 'short',
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric',
+                          })
+                        : 'Sélectionner une date'}
+                    </Text>
+                    <Ionicons name="calendar-outline" size={20} color="#6B7280" />
+                  </TouchableOpacity>
+                  {showEndDatePicker && (
+                    <DateTimePicker
+                      value={endDate || new Date()}
+                      mode="date"
+                      display="default"
+                      onChange={(event, selectedDate) => {
+                        setShowEndDatePicker(false);
+                        if (selectedDate) setEndDate(selectedDate);
+                      }}
+                      minimumDate={date}
+                    />
+                  )}
+                </View>
+              )}
+            </View>
+          )}
 
           <View className="mb-5">
             <Input

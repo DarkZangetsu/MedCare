@@ -16,6 +16,8 @@ export interface Reminder {
   description?: string;
   date: string;
   time: string;
+  frequency?: 'once' | 'daily' | 'weekly' | 'monthly';
+  endDate?: string;
   isActive: boolean;
   notificationId?: string;
 }

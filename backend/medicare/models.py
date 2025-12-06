@@ -70,6 +70,13 @@ class Reminder(models.Model):
         ('appointment', 'Rendez-vous'),
         ('analysis', 'Analyse'),
     ]
+    
+    FREQUENCY_CHOICES = [
+        ('once', 'Une seule fois'),
+        ('daily', 'Tous les jours'),
+        ('weekly', 'Toutes les semaines'),
+        ('monthly', 'Tous les mois'),
+    ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='reminders')
@@ -78,6 +85,8 @@ class Reminder(models.Model):
     description = models.TextField(null=True, blank=True)
     date = models.DateField()
     time = models.TimeField()
+    frequency = models.CharField(max_length=20, choices=FREQUENCY_CHOICES, default='once')
+    end_date = models.DateField(null=True, blank=True)  # Date de fin pour les rappels récurrents
     is_active = models.BooleanField(default=True)
     notification_id = models.CharField(max_length=200, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
