@@ -76,8 +76,14 @@ export default function PDFScreen() {
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
       <StatusBar style="dark" />
-      <View className="bg-white px-6 py-4 border-b border-gray-200">
-        <Text className="text-2xl font-bold text-gray-900">Document médical</Text>
+      <View className="bg-white px-5 py-4 border-b border-gray-200 flex-row items-center">
+        <TouchableOpacity
+          onPress={() => router.back()}
+          className="mr-4 p-2 -ml-2"
+        >
+          <Ionicons name="arrow-back" size={24} color="#1F2937" />
+        </TouchableOpacity>
+        <Text className="text-2xl font-bold text-gray-900 flex-1">Document médical</Text>
       </View>
 
       <ScrollView className="flex-1 px-6 py-4">
