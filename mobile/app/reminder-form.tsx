@@ -60,7 +60,8 @@ export default function ReminderFormScreen() {
       router.back();
     } catch (error: any) {
       console.error('Error creating reminder:', error);
-      Alert.alert('Erreur', error.message || 'Impossible de créer le rappel');
+      const errorMessage = error?.message || error?.graphQLErrors?.[0]?.message || 'Impossible de créer le rappel';
+      Alert.alert('Erreur', errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -106,10 +107,10 @@ export default function ReminderFormScreen() {
                   <Ionicons
                     name={
                       t === 'medication'
-                        ? 'medical'
+                        ? 'bandage'
                         : t === 'appointment'
-                        ? 'calendar'
-                        : 'flask'
+                        ? 'calendar-outline'
+                        : 'flask-outline'
                     }
                     size={24}
                     color={type === t ? '#FFFFFF' : '#6B7280'}

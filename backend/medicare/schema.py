@@ -6,7 +6,7 @@ from graphql_jwt.decorators import login_required
 from graphql_jwt.shortcuts import get_token
 from .models import (
     Patient, Doctor, Admin, Reminder, JournalEntry, Consultation,
-    Message, Payment, AITriage
+    Message, Payment, AITriage as AITriageModel
 )
 
 
@@ -111,7 +111,7 @@ class PaymentType(DjangoObjectType):
 
 class AITriageType(DjangoObjectType):
     class Meta:
-        model = AITriage
+        model = AITriageModel
         fields = ('id', 'symptoms', 'severity', 'advice', 'recommendation', 'created_at')
 
 
@@ -411,61 +411,22 @@ class CreateReminder(graphene.Mutation):
             except ValueError:
                 raise Exception("Format de date de fin invalide")
         
-        # Créer les rappels selon la fréquence
-        reminders_created = []
-        current_date = date
+        # Créer un seul rappel avec les informations de fréquence
+        # Le système de notifications mobile gérera les répétitions
+        reminder = Reminder.objects.create(
+            patient=patient,
+            type=type,
+            title=title,
+            description=description,
+            date=date,  # Date de début
+            time=time,
+            frequency=frequency,
+            end_date=end_date_obj,  # Date de fin pour les rappels récurrents
+            is_active=True,
+            notification_id=notification_id or notificationId
+        )
         
-        if frequency == 'once':
-            # Un seul rappel
-            reminder = Reminder.objects.create(
-                patient=patient,
-                type=type,
-                title=title,
-                description=description,
-                date=date,
-                time=time,
-                frequency=frequency,
-                end_date=end_date_obj,
-                is_active=True,
-                notification_id=notification_id or notificationId
-            )
-            reminders_created.append(reminder)
-        else:
-            # Rappels récurrents
-            from datetime import timedelta
-            end_date_limit = end_date_obj if end_date_obj else date + timedelta(days=365)  # Par défaut, 1 an
-            
-            while current_date <= end_date_limit:
-                reminder = Reminder.objects.create(
-                    patient=patient,
-                    type=type,
-                    title=title,
-                    description=description,
-                    date=current_date,
-                    time=time,
-                    frequency=frequency,
-                    end_date=end_date_obj,
-                    is_active=True,
-                    notification_id=notification_id or notificationId
-                )
-                reminders_created.append(reminder)
-                
-                # Calculer la prochaine date selon la fréquence
-                if frequency == 'daily':
-                    current_date += timedelta(days=1)
-                elif frequency == 'weekly':
-                    current_date += timedelta(weeks=1)
-                elif frequency == 'monthly':
-                    # Ajouter un mois (approximation)
-                    if current_date.month == 12:
-                        current_date = current_date.replace(year=current_date.year + 1, month=1)
-                    else:
-                        current_date = current_date.replace(month=current_date.month + 1)
-                else:
-                    break  # Fréquence inconnue, arrêter
-        
-        # Retourner le premier rappel créé
-        return CreateReminder(reminder=reminders_created[0] if reminders_created else None)
+        return CreateReminder(reminder=reminder)
 
 
 class UpdateReminder(graphene.Mutation):
@@ -565,40 +526,34 @@ class AITriage(graphene.Mutation):
     triage = graphene.Field(AITriageType)
 
     def mutate(self, info, symptoms):
-        # TODO: Implémenter l'analyse IA réelle (appel à OpenAI, etc.)
-        # Pour l'instant, logique simple basée sur des mots-clés
+        from .services.ollama_service import analyze_symptoms_with_ollama
         
-        symptoms_lower = symptoms.lower()
+        # Analyser les symptômes avec Ollama
+        analysis = analyze_symptoms_with_ollama(symptoms)
         
-        # Déterminer la gravité
-        critical_keywords = ['douleur poitrine', 'difficulté respirer', 'perte connaissance']
-        high_keywords = ['fièvre élevée', 'vomissements', 'saignement']
-        medium_keywords = ['maux tête', 'fatigue', 'nausée']
+        # Log pour déboguer
+        print(f"Analysis result: {analysis}")
+        print(f"Severity: {analysis.get('severity')}")
         
-        if any(keyword in symptoms_lower for keyword in critical_keywords):
-            severity = 'critical'
-            advice = "URGENCE MÉDICALE - Consultez immédiatement un médecin ou appelez les urgences."
-            recommendation = "Consultation d'urgence requise immédiatement."
-        elif any(keyword in symptoms_lower for keyword in high_keywords):
-            severity = 'high'
-            advice = "Consultez un médecin dans les prochaines heures. Surveillez vos symptômes attentivement."
-            recommendation = "Consultation recommandée dans les 2-4 heures."
-        elif any(keyword in symptoms_lower for keyword in medium_keywords):
-            severity = 'medium'
-            advice = "Surveillez vos symptômes. Reposez-vous et hydratez-vous bien. Si les symptômes persistent, consultez un médecin."
-            recommendation = "Consultation recommandée dans les 24-48h si les symptômes persistent."
-        else:
-            severity = 'low'
-            advice = "Vos symptômes semblent légers. Reposez-vous, hydratez-vous et surveillez l'évolution."
-            recommendation = "Surveillance à domicile recommandée. Consultez si aggravation."
+        # Récupérer le patient si l'utilisateur est connecté
+        patient = None
+        if info.context.user and info.context.user.is_authenticated:
+            try:
+                patient = Patient.objects.get(user=info.context.user)
+            except Patient.DoesNotExist:
+                pass
         
         # Créer l'entrée de triage
-        triage = AITriage.objects.create(
+        triage = AITriageModel.objects.create(
+            patient=patient,
             symptoms=symptoms,
-            severity=severity,
-            advice=advice,
-            recommendation=recommendation
+            severity=analysis.get('severity', 'medium'),
+            advice=analysis.get('advice', 'Surveillez vos symptômes.'),
+            recommendation=analysis.get('recommendation', 'Consultez un médecin si nécessaire.')
         )
+        
+        # Vérifier que severity est bien sauvegardé
+        print(f"Triage created with severity: {triage.severity}")
         
         return AITriage(triage=triage)
 
@@ -715,7 +670,7 @@ class Query(graphene.ObjectType):
         user = info.context.user
         try:
             patient = Patient.objects.get(user=user)
-            return AITriage.objects.filter(patient=patient).order_by('-created_at')
+            return AITriageModel.objects.filter(patient=patient).order_by('-created_at')
         except Patient.DoesNotExist:
             return []
     

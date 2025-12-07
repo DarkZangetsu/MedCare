@@ -105,8 +105,6 @@ export default function DoctorsPage() {
     }
   };
 
-  if (loading) return <div className="text-center">Chargement...</div>;
-
   const allDoctors = showPending 
     ? (pendingData as any)?.pendingDoctors || []
     : (allData as any)?.allDoctors || [];
@@ -138,6 +136,8 @@ export default function DoctorsPage() {
       return matchesSearch && matchesSpecialty;
     });
   }, [allDoctors, searchQuery, specialtyFilter]);
+
+  if (loading) return <div className="text-center">Chargement...</div>;
 
   return (
     <div className="space-y-6">

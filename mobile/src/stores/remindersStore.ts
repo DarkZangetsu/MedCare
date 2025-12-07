@@ -64,7 +64,19 @@ export const useRemindersStore = create<RemindersState>()((set, get) => ({
           notificationId: reminderData.notificationId || null,
         },
       });
+      
+      console.log('Create reminder response:', JSON.stringify(data, null, 2));
+      
+      if (!data?.createReminder?.reminder) {
+        throw new Error('Le serveur n\'a pas retourné de rappel créé');
+      }
+      
       const newReminder = data.createReminder.reminder;
+      
+      if (!newReminder.id) {
+        throw new Error('Le rappel créé n\'a pas d\'identifiant');
+      }
+      
       const reminder: Reminder = {
         id: newReminder.id,
         type: newReminder.type,
@@ -83,8 +95,13 @@ export const useRemindersStore = create<RemindersState>()((set, get) => ({
       }));
     } catch (error: any) {
       console.error('Error creating reminder:', error);
-      set({ error: error.message || 'Erreur lors de la création du rappel', isLoading: false });
-      throw error;
+      console.error('Error details:', JSON.stringify(error, null, 2));
+      const errorMessage = error?.message || 
+                          error?.graphQLErrors?.[0]?.message || 
+                          error?.networkError?.message ||
+                          'Erreur lors de la création du rappel';
+      set({ error: errorMessage, isLoading: false });
+      throw new Error(errorMessage);
     }
   },
   updateReminder: async (id, updates) => {

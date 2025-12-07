@@ -7,7 +7,7 @@ import Constants from 'expo-constants';
 const GRAPHQL_URI = 
   Constants.expoConfig?.extra?.graphqlUri || 
   __DEV__ 
-    ? 'http://192.168.0.106:8000/graphql/'  // IP de la machine pour Android ou bien celui du serveur backend
+    ? 'http://192.168.0.102:8000/graphql/'  // IP de la machine pour Android ou bien celui du serveur backend
     : 'http://localhost:8000/graphql/';
 
 const httpLink = createHttpLink({
@@ -100,10 +100,12 @@ export const GET_DOCTORS = gql`
 export const AI_TRIAGE = gql`
   mutation AITriage($symptoms: String!) {
     aiTriage(symptoms: $symptoms) {
-      id
-      severity
-      advice
-      recommendation
+      triage {
+        id
+        severity
+        advice
+        recommendation
+      }
     }
   }
 `;

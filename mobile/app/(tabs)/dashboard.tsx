@@ -76,10 +76,10 @@ export default function DashboardScreen() {
                     <Ionicons
                       name={
                         reminder.type === 'medication'
-                          ? 'medical'
+                          ? 'bandage'
                           : reminder.type === 'appointment'
-                          ? 'calendar'
-                          : 'flask'
+                          ? 'calendar-outline'
+                          : 'flask-outline'
                       }
                       size={24}
                       color={

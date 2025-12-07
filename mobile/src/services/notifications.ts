@@ -76,17 +76,54 @@ export async function scheduleReminderNotification(reminder: Reminder): Promise<
     throw new Error('La date du rappel doit être dans le futur');
   }
 
-  const notificationId = await Notifications.scheduleNotificationAsync({
-    content: {
-      title: `Rappel: ${reminder.title}`,
-      body: reminder.description || `N'oubliez pas votre ${reminder.type === 'medication' ? 'médicament' : reminder.type === 'appointment' ? 'rendez-vous' : 'analyse'}`,
-      data: { reminderId: reminder.id },
-      sound: true,
-    },
-    trigger: notificationDate,
-  });
+  // Pour les rappels récurrents, programmer plusieurs notifications
+  if (reminder.frequency && reminder.frequency !== 'once' && reminder.endDate) {
+    const endDate = new Date(reminder.endDate);
+    const notifications: string[] = [];
+    let currentDate = new Date(notificationDate);
+    
+    while (currentDate <= endDate) {
+      if (currentDate >= now) {
+        const notificationId = await Notifications.scheduleNotificationAsync({
+          content: {
+            title: `Rappel: ${reminder.title}`,
+            body: reminder.description || `N'oubliez pas votre ${reminder.type === 'medication' ? 'médicament' : reminder.type === 'appointment' ? 'rendez-vous' : 'analyse'}`,
+            data: { reminderId: reminder.id },
+            sound: true,
+          },
+          trigger: currentDate,
+        });
+        notifications.push(notificationId);
+      }
+      
+      // Calculer la prochaine date selon la fréquence
+      if (reminder.frequency === 'daily') {
+        currentDate.setDate(currentDate.getDate() + 1);
+      } else if (reminder.frequency === 'weekly') {
+        currentDate.setDate(currentDate.getDate() + 7);
+      } else if (reminder.frequency === 'monthly') {
+        currentDate.setMonth(currentDate.getMonth() + 1);
+      } else {
+        break;
+      }
+    }
+    
+    // Retourner le premier ID de notification (on stocke le premier, les autres sont programmées)
+    return notifications[0] || '';
+  } else {
+    // Rappel unique
+    const notificationId = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: `Rappel: ${reminder.title}`,
+        body: reminder.description || `N'oubliez pas votre ${reminder.type === 'medication' ? 'médicament' : reminder.type === 'appointment' ? 'rendez-vous' : 'analyse'}`,
+        data: { reminderId: reminder.id },
+        sound: true,
+      },
+      trigger: notificationDate,
+    });
 
-  return notificationId;
+    return notificationId;
+  }
 }
 
 export async function cancelNotification(notificationId: string): Promise<void> {

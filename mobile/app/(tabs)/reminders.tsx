@@ -157,10 +157,10 @@ export default function RemindersScreen() {
                   <Ionicons
                     name={
                       reminder.type === 'medication'
-                        ? 'medical'
+                        ? 'bandage'
                         : reminder.type === 'appointment'
-                        ? 'calendar'
-                        : 'flask'
+                        ? 'calendar-outline'
+                        : 'flask-outline'
                     }
                     size={26}
                     color={
@@ -197,6 +197,15 @@ export default function RemindersScreen() {
                         new Date(`${reminder.date}T${reminder.time}`),
                         "EEEE d MMMM yyyy à HH:mm",
                         { locale: fr }
+                      )}
+                      {reminder.frequency && reminder.frequency !== 'once' && (
+                        <Text className="text-blue-600 font-semibold">
+                          {' • '}
+                          {reminder.frequency === 'daily' && 'Tous les jours'}
+                          {reminder.frequency === 'weekly' && 'Toutes les semaines'}
+                          {reminder.frequency === 'monthly' && 'Tous les mois'}
+                          {reminder.endDate && ` jusqu'au ${format(new Date(reminder.endDate), 'd MMM yyyy', { locale: fr })}`}
+                        </Text>
                       )}
                     </Text>
                   </View>
